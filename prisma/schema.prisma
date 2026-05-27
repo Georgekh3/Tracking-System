@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum TransactionType {
+  GIVEN
+  RETURNED
+}
+
+model User {
+  id                String        @id @default(cuid())
+  name              String
+  email             String        @unique
+  passwordHash      String
+  role              Role          @default(USER)
+  isActive          Boolean       @default(true)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  transactions      Transaction[] @relation("UserTransactions")
+  adminTransactions Transaction[] @relation("AdminTransactions")
+
+  @@index([role])
+  @@index([isActive])
+}
+
+model Item {
+  id           String        @id @default(cuid())
+  name         String
+  imagePath    String?
+  quantity     Int           @default(0)
+  unitPrice    Decimal       @db.Decimal(12, 2)
+  place        String
+  category     String
+  description  String
+  isDeleted    Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  transactions Transaction[]
+
+  @@index([category])
+  @@index([isDeleted])
+}
+
+model Transaction {
+  id               String          @id @default(cuid())
+  itemId           String
+  userId           String
+  type             TransactionType
+  quantity         Int
+  unitPrice        Decimal         @db.Decimal(12, 2)
+  totalPrice       Decimal         @db.Decimal(12, 2)
+  notes            String?
+  createdByAdminId String
+  createdAt        DateTime        @default(now())
+  item             Item            @relation(fields: [itemId], references: [id])
+  user             User            @relation("UserTransactions", fields: [userId], references: [id])
+  createdByAdmin   User            @relation("AdminTransactions", fields: [createdByAdminId], references: [id])
+
+  @@index([itemId])
+  @@index([userId])
+  @@index([createdByAdminId])
+  @@index([type])
+  @@index([createdAt])
+}
