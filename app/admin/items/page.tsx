@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { Archive, PackagePlus, Save, Search } from "lucide-react";
+import { PackagePlus, Save, Search } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { Badge } from "@/components/badge";
@@ -182,7 +182,7 @@ export default async function AdminItemsPage({
                               <input type="hidden" name="id" value={item.id} />
                               <ConfirmSubmitButton
                                 className="btn-danger w-full"
-                                icon={Archive}
+                                icon="archive"
                                 message={`Archive ${item.name}? It will disappear from active inventory.`}
                               >
                                 Archive

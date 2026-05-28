@@ -1,19 +1,29 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
+import { Archive, RotateCcw, UserCog, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
+
+const icons = {
+  archive: Archive,
+  restore: RotateCcw,
+  userStatus: UserCog
+} satisfies Record<string, LucideIcon>;
+
+type ConfirmSubmitIcon = keyof typeof icons;
 
 export function ConfirmSubmitButton({
   message,
   children,
   className,
-  icon: Icon
+  icon
 }: {
   message: string;
   children: ReactNode;
   className: string;
-  icon?: LucideIcon;
+  icon?: ConfirmSubmitIcon;
 }) {
+  const Icon = icon ? icons[icon] : null;
+
   return (
     <button
       className={className}

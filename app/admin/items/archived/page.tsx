@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { RotateCcw } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { ItemPhoto } from "@/components/item-photo";
@@ -71,7 +70,7 @@ export default async function ArchivedItemsPage({
                         <input type="hidden" name="id" value={item.id} />
                         <ConfirmSubmitButton
                           className="btn-secondary w-full"
-                          icon={RotateCcw}
+                          icon="restore"
                           message={`Restore ${item.name} to active inventory?`}
                         >
                           Restore

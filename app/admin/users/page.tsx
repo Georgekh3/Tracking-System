@@ -1,5 +1,5 @@
 import { Prisma, Role } from "@prisma/client";
-import { Save, Search, UserCog, UserPlus } from "lucide-react";
+import { Save, Search, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { Badge } from "@/components/badge";
@@ -169,7 +169,7 @@ export default async function AdminUsersPage({
                             <input type="hidden" name="id" value={user.id} />
                             <ConfirmSubmitButton
                               className={user.isActive ? "btn-danger w-full" : "btn-secondary w-full"}
-                              icon={UserCog}
+                              icon="userStatus"
                               message={`${user.isActive ? "Deactivate" : "Reactivate"} ${user.name}?`}
                             >
                               {user.isActive ? "Deactivate" : "Reactivate"}
