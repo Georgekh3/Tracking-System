@@ -48,6 +48,10 @@ export const returnItemSchema = z.object({
   notes: z.string().trim().optional()
 });
 
+export const missingItemSchema = returnItemSchema.extend({
+  notes: z.string().trim().min(1, "Add a note explaining what is missing or damaged.")
+});
+
 export const reportFiltersSchema = z.object({
   userId: z.string().optional(),
   itemId: z.string().optional(),

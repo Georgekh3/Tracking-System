@@ -1,10 +1,8 @@
 import { Role } from "@prisma/client";
-import { HandCoins } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Badge } from "@/components/badge";
-import { ItemPhoto } from "@/components/item-photo";
 import { StatusMessage } from "@/components/status-message";
-import { giveItemAction } from "@/lib/actions/transactions";
+import { GiveItemsForm } from "@/app/admin/give/give-items-form";
 import { requireAdmin } from "@/lib/auth";
 import { formatCurrency, toNumber } from "@/lib/format";
 import { getHoldings } from "@/lib/holdings";
@@ -46,119 +44,22 @@ export default async function GiveItemsPage({
 
       <StatusMessage success={params.success} error={params.error} />
 
-      <form action={giveItemAction} className="grid gap-6 lg:grid-cols-[360px_1fr]">
-        <div className="panel p-5">
-          <div className="sticky top-4 space-y-4">
-            <h2 className="text-lg font-semibold text-ink">New Handover</h2>
-
-            <div className="space-y-1.5">
-              <label className="field-label" htmlFor="userId">
-                User
-              </label>
-              <select className="field-input" id="userId" name="userId" required>
-                <option value="">Select user</option>
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.name} - {user.email}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="field-label" htmlFor="notes">
-                Batch notes
-              </label>
-              <textarea
-                className="field-input min-h-24"
-                id="notes"
-                name="notes"
-                placeholder="Optional note saved on every selected item"
-              />
-            </div>
-
-            <div className="rounded-md border border-atelier-line bg-atelier-mist p-3 text-sm text-slate-700">
-              Check each item to give, then enter the quantity for that item.
-            </div>
-
-            <button className="btn-primary w-full" type="submit">
-              <HandCoins className="h-4 w-4" aria-hidden="true" />
-              Give selected items
-            </button>
-          </div>
-        </div>
-
-        <div className="panel overflow-hidden">
-          <div className="border-b border-atelier-line p-5">
-            <h2 className="text-lg font-semibold text-ink">Select Inventory Items</h2>
-            <p className="text-sm text-slate-500">
-              Available stock is listed here for faster multi-item handovers.
-            </p>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="responsive-table min-w-[900px] w-full">
-              <thead className="table-head">
-                <tr>
-                  <th className="px-4 py-3">Select</th>
-                  <th className="px-4 py-3">Item</th>
-                  <th className="px-4 py-3">Category</th>
-                  <th className="px-4 py-3">Available</th>
-                  <th className="px-4 py-3">Unit Price</th>
-                  <th className="px-4 py-3">Quantity to Give</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr key={item.id}>
-                    <td className="table-cell" data-label="Select">
-                      <input
-                        aria-label={`Select ${item.name}`}
-                        className="h-4 w-4 rounded border-slate-300 text-atelier-teal focus:ring-atelier-teal"
-                        name="itemIds"
-                        type="checkbox"
-                        value={item.id}
-                      />
-                    </td>
-                    <td className="table-cell mobile-full" data-label="Item">
-                      <div className="flex items-center gap-3">
-                        <ItemPhoto imagePath={item.imagePath} name={item.name} size="sm" />
-                        <div className="min-w-0">
-                          <div className="truncate font-medium text-ink">{item.name}</div>
-                          <div className="text-xs text-slate-500">{item.place}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="table-cell" data-label="Category">{item.category}</td>
-                    <td className="table-cell" data-label="Available">
-                      <Badge variant="green">{item.quantity}</Badge>
-                    </td>
-                    <td className="table-cell" data-label="Unit Price">{formatCurrency(toNumber(item.unitPrice))}</td>
-                    <td className="table-cell" data-label="Quantity to Give">
-                      <input
-                        aria-label={`Quantity of ${item.name} to give`}
-                        className="field-input max-w-28"
-                        name={`quantity:${item.id}`}
-                        type="number"
-                        min="1"
-                        max={item.quantity}
-                        step="1"
-                      />
-                    </td>
-                  </tr>
-                ))}
-                {items.length === 0 ? (
-                  <tr>
-                    <td className="table-cell text-center text-slate-500" colSpan={6}>
-                      No stock is currently available to hand over.
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </form>
+      <GiveItemsForm
+        users={users.map((user) => ({
+          id: user.id,
+          name: user.name,
+          email: user.email
+        }))}
+        items={items.map((item) => ({
+          id: item.id,
+          name: item.name,
+          imagePath: item.imagePath,
+          quantity: item.quantity,
+          unitPrice: toNumber(item.unitPrice),
+          place: item.place,
+          category: item.category
+        }))}
+      />
 
       <section className="panel mt-6 overflow-hidden">
         <div className="border-b border-atelier-line p-5">

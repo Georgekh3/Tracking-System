@@ -4,7 +4,7 @@ import { Prisma, Role, TransactionType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { requireAdmin, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { giveItemsSchema, returnItemSchema } from "@/lib/validation";
+import { giveItemsSchema, missingItemSchema, returnItemSchema } from "@/lib/validation";
 import { errorMessage, firstIssue, redirectWithMessage } from "@/lib/actions/helpers";
 
 const GIVE_PATH = "/admin/give";
@@ -164,9 +164,11 @@ export async function returnItemAction(formData: FormData) {
       }
 
       const heldQuantity = transactions.reduce((sum, transaction) => {
-        return transaction.type === TransactionType.GIVEN
-          ? sum + transaction.quantity
-          : sum - transaction.quantity;
+        if (transaction.type === TransactionType.GIVEN) {
+          return sum + transaction.quantity;
+        }
+
+        return sum - transaction.quantity;
       }, 0);
 
       if (parsed.data.quantity > heldQuantity) {
@@ -205,4 +207,79 @@ export async function returnItemAction(formData: FormData) {
   revalidatePath("/admin");
   revalidatePath("/admin/reports");
   redirectWithMessage(USER_DASHBOARD_PATH, "success", "Returned items sent back to Atelier stock.");
+}
+
+export async function markMissingItemAction(formData: FormData) {
+  const user = await requireUser();
+
+  if (user.role !== Role.USER) {
+    redirectWithMessage("/admin", "error", "Only users can mark their own items as missing.");
+  }
+
+  const parsed = missingItemSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    redirectWithMessage(USER_DASHBOARD_PATH, "error", firstIssue(parsed.error));
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      if (parsed.data.userId && parsed.data.userId !== user.id) {
+        throw new Error("You can only update items assigned to your account.");
+      }
+
+      const [item, transactions] = await Promise.all([
+        tx.item.findUnique({
+          where: { id: parsed.data.itemId }
+        }),
+        tx.transaction.findMany({
+          where: {
+            userId: user.id,
+            itemId: parsed.data.itemId
+          },
+          select: {
+            type: true,
+            quantity: true
+          }
+        })
+      ]);
+
+      if (!item) {
+        throw new Error("Item was not found.");
+      }
+
+      const heldQuantity = transactions.reduce((sum, transaction) => {
+        if (transaction.type === TransactionType.GIVEN) {
+          return sum + transaction.quantity;
+        }
+
+        return sum - transaction.quantity;
+      }, 0);
+
+      if (parsed.data.quantity > heldQuantity) {
+        throw new Error("Missing quantity cannot be more than you currently have.");
+      }
+
+      const unitPrice = new Prisma.Decimal(item.unitPrice);
+
+      await tx.transaction.create({
+        data: {
+          itemId: item.id,
+          userId: user.id,
+          type: TransactionType.MISSING,
+          quantity: parsed.data.quantity,
+          unitPrice,
+          totalPrice: unitPrice.mul(parsed.data.quantity),
+          notes: parsed.data.notes,
+          createdByAdminId: user.id
+        }
+      });
+    });
+  } catch (error) {
+    redirectWithMessage(USER_DASHBOARD_PATH, "error", errorMessage(error));
+  }
+
+  revalidatePath(USER_DASHBOARD_PATH);
+  revalidatePath("/admin");
+  revalidatePath("/admin/reports");
+  redirectWithMessage(USER_DASHBOARD_PATH, "success", "Missing or damaged items recorded.");
 }

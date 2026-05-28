@@ -1,7 +1,9 @@
 import { Prisma } from "@prisma/client";
 import { Archive, PackagePlus, Save, Search } from "lucide-react";
+import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { Badge } from "@/components/badge";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { ItemPhoto } from "@/components/item-photo";
 import { StatusMessage } from "@/components/status-message";
 import { createItemAction, deleteItemAction, updateItemAction } from "@/lib/actions/items";
@@ -12,6 +14,7 @@ import { prisma } from "@/lib/prisma";
 
 type SearchParams = {
   q?: string;
+  page?: string;
   success?: string;
   error?: string;
 };
@@ -24,6 +27,8 @@ export default async function AdminItemsPage({
   const admin = await requireAdmin();
   const params = (await searchParams) ?? {};
   const query = params.q?.trim() ?? "";
+  const page = Math.max(1, Number(params.page ?? 1) || 1);
+  const pageSize = 25;
 
   const where: Prisma.ItemWhereInput = { isDeleted: false };
   if (query) {
@@ -34,16 +39,30 @@ export default async function AdminItemsPage({
     ];
   }
 
-  const items = await prisma.item.findMany({
-    where,
-    orderBy: { createdAt: "desc" }
-  });
+  const [items, itemCount] = await Promise.all([
+    prisma.item.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize
+    }),
+    prisma.item.count({ where })
+  ]);
+  const totalPages = Math.max(1, Math.ceil(itemCount / pageSize));
+  const pageHref = (nextPage: number) =>
+    `/admin/items?${new URLSearchParams({
+      ...(query ? { q: query } : {}),
+      page: String(nextPage)
+    }).toString()}`;
 
   return (
     <AppShell user={admin}>
       <div className="mb-6 flex flex-col gap-2">
         <h1 className="page-title">Inventory Management</h1>
         <p className="text-sm text-slate-600">Create, edit, archive, and search Atelier stock items.</p>
+        <Link className="text-sm font-medium text-atelier-teal hover:underline" href="/admin/items/archived">
+          View archived items
+        </Link>
       </div>
 
       <StatusMessage success={params.success} error={params.error} />
@@ -161,10 +180,13 @@ export default async function AdminItemsPage({
                             </details>
                             <form action={deleteItemAction}>
                               <input type="hidden" name="id" value={item.id} />
-                              <button className="btn-danger w-full" type="submit">
-                                <Archive className="h-4 w-4" aria-hidden="true" />
+                              <ConfirmSubmitButton
+                                className="btn-danger w-full"
+                                icon={Archive}
+                                message={`Archive ${item.name}? It will disappear from active inventory.`}
+                              >
                                 Archive
-                              </button>
+                              </ConfirmSubmitButton>
                             </form>
                           </div>
                         </td>
@@ -178,6 +200,20 @@ export default async function AdminItemsPage({
                   ) : null}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-slate-500">
+              Page {page} of {totalPages} - {itemCount} active items
+            </div>
+            <div className="flex gap-2">
+              <Link className="btn-secondary" href={pageHref(Math.max(1, page - 1))} aria-disabled={page <= 1}>
+                Previous
+              </Link>
+              <Link className="btn-secondary" href={pageHref(Math.min(totalPages, page + 1))} aria-disabled={page >= totalPages}>
+                Next
+              </Link>
             </div>
           </div>
         </div>

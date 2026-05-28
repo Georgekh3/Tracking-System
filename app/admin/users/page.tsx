@@ -1,7 +1,9 @@
 import { Prisma, Role } from "@prisma/client";
 import { Save, Search, UserCog, UserPlus } from "lucide-react";
+import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { Badge } from "@/components/badge";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { PasswordInput } from "@/components/password-input";
 import { StatusMessage } from "@/components/status-message";
 import { createUserAction, toggleUserStatusAction, updateUserAction } from "@/lib/actions/users";
@@ -11,6 +13,7 @@ import { prisma } from "@/lib/prisma";
 
 type SearchParams = {
   q?: string;
+  page?: string;
   success?: string;
   error?: string;
 };
@@ -23,6 +26,8 @@ export default async function AdminUsersPage({
   const admin = await requireAdmin();
   const params = (await searchParams) ?? {};
   const query = params.q?.trim() ?? "";
+  const page = Math.max(1, Number(params.page ?? 1) || 1);
+  const pageSize = 25;
 
   const where: Prisma.UserWhereInput = {};
   if (query) {
@@ -32,18 +37,29 @@ export default async function AdminUsersPage({
     ];
   }
 
-  const users = await prisma.user.findMany({
-    where,
-    orderBy: [{ role: "asc" }, { name: "asc" }],
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      isActive: true,
-      createdAt: true
-    }
-  });
+  const [users, userCount] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      orderBy: [{ role: "asc" }, { name: "asc" }],
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        createdAt: true
+      }
+    }),
+    prisma.user.count({ where })
+  ]);
+  const totalPages = Math.max(1, Math.ceil(userCount / pageSize));
+  const pageHref = (nextPage: number) =>
+    `/admin/users?${new URLSearchParams({
+      ...(query ? { q: query } : {}),
+      page: String(nextPage)
+    }).toString()}`;
 
   return (
     <AppShell user={admin}>
@@ -151,10 +167,13 @@ export default async function AdminUsersPage({
 
                           <form action={toggleUserStatusAction}>
                             <input type="hidden" name="id" value={user.id} />
-                            <button className={user.isActive ? "btn-danger w-full" : "btn-secondary w-full"} type="submit">
-                              <UserCog className="h-4 w-4" aria-hidden="true" />
+                            <ConfirmSubmitButton
+                              className={user.isActive ? "btn-danger w-full" : "btn-secondary w-full"}
+                              icon={UserCog}
+                              message={`${user.isActive ? "Deactivate" : "Reactivate"} ${user.name}?`}
+                            >
                               {user.isActive ? "Deactivate" : "Reactivate"}
-                            </button>
+                            </ConfirmSubmitButton>
                           </form>
                         </div>
                       </td>
@@ -167,6 +186,20 @@ export default async function AdminUsersPage({
                   ) : null}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-slate-500">
+              Page {page} of {totalPages} - {userCount} users
+            </div>
+            <div className="flex gap-2">
+              <Link className="btn-secondary" href={pageHref(Math.max(1, page - 1))} aria-disabled={page <= 1}>
+                Previous
+              </Link>
+              <Link className="btn-secondary" href={pageHref(Math.min(totalPages, page + 1))} aria-disabled={page >= totalPages}>
+                Next
+              </Link>
             </div>
           </div>
         </div>

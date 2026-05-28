@@ -1,5 +1,5 @@
 import { Prisma, TransactionType } from "@prisma/client";
-import { Filter, RotateCcw } from "lucide-react";
+import { Download, Filter, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { Badge } from "@/components/badge";
@@ -16,6 +16,7 @@ type SearchParams = {
   type?: string;
   from?: string;
   to?: string;
+  page?: string;
   success?: string;
   error?: string;
 };
@@ -33,24 +34,53 @@ export default async function ReportsPage({
 }) {
   const admin = await requireAdmin();
   const params = (await searchParams) ?? {};
+  const page = Math.max(1, Number(params.page ?? 1) || 1);
+  const pageSize = 25;
 
-  const where: Prisma.TransactionWhereInput = {};
-  if (params.userId) where.userId = params.userId;
-  if (params.itemId) where.itemId = params.itemId;
-  if (params.type === TransactionType.GIVEN || params.type === TransactionType.RETURNED) {
-    where.type = params.type;
+  const baseWhere: Prisma.TransactionWhereInput = {};
+  if (params.userId) baseWhere.userId = params.userId;
+  if (params.itemId) baseWhere.itemId = params.itemId;
+  let selectedType: TransactionType | undefined;
+  if (
+    params.type === TransactionType.GIVEN ||
+    params.type === TransactionType.RETURNED ||
+    params.type === TransactionType.MISSING
+  ) {
+    selectedType = params.type;
   }
 
   const from = dateFromInput(params.from);
   const to = dateFromInput(params.to, true);
   if (from || to) {
-    where.createdAt = {
+    baseWhere.createdAt = {
       ...(from ? { gte: from } : {}),
       ...(to ? { lte: to } : {})
     };
   }
 
-  const [users, items, transactions, holdings, stockItems] = await Promise.all([
+  const where: Prisma.TransactionWhereInput = {
+    ...baseWhere,
+    ...(selectedType ? { type: selectedType } : {})
+  };
+  const returnedWhere: Prisma.TransactionWhereInput = {
+    ...baseWhere,
+    type: TransactionType.RETURNED
+  };
+  const missingWhere: Prisma.TransactionWhereInput = {
+    ...baseWhere,
+    type: TransactionType.MISSING
+  };
+
+  const [
+    users,
+    items,
+    transactions,
+    transactionCount,
+    returnedTransactions,
+    missingTransactions,
+    holdings,
+    stockItems
+  ] = await Promise.all([
     prisma.user.findMany({
       where: { role: "USER" },
       orderBy: { name: "asc" },
@@ -67,8 +97,35 @@ export default async function ReportsPage({
         user: true,
         createdByAdmin: true
       },
-      orderBy: { createdAt: "desc" }
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize
     }),
+    prisma.transaction.count({ where }),
+    selectedType && selectedType !== TransactionType.RETURNED
+      ? Promise.resolve([])
+      : prisma.transaction.findMany({
+          where: returnedWhere,
+          include: {
+            item: true,
+            user: true,
+            createdByAdmin: true
+          },
+          orderBy: { createdAt: "desc" },
+          take: pageSize
+        }),
+    selectedType && selectedType !== TransactionType.MISSING
+      ? Promise.resolve([])
+      : prisma.transaction.findMany({
+          where: missingWhere,
+          include: {
+            item: true,
+            user: true,
+            createdByAdmin: true
+          },
+          orderBy: { createdAt: "desc" },
+          take: pageSize
+        }),
     getHoldings({
       onlyRemaining: true,
       userId: params.userId || undefined,
@@ -79,6 +136,7 @@ export default async function ReportsPage({
       orderBy: [{ quantity: "asc" }, { name: "asc" }]
     })
   ]);
+  const totalPages = Math.max(1, Math.ceil(transactionCount / pageSize));
 
   const totalsByUser = Array.from(
     holdings.reduce((map, holding) => {
@@ -97,8 +155,21 @@ export default async function ReportsPage({
       .values()
   ).sort((a, b) => b.value - a.value);
 
-  const returnedTransactions = transactions.filter((transaction) => transaction.type === TransactionType.RETURNED);
   const lowStockItems = stockItems.filter((item) => item.quantity <= LOW_STOCK_THRESHOLD);
+  const exportHref = `/admin/reports/export?${new URLSearchParams(
+    Object.entries(params)
+      .filter((entry): entry is [string, string] => Boolean(entry[1]))
+      .filter(([key]) => key !== "page")
+  ).toString()}`;
+  const pageHref = (nextPage: number) =>
+    `/admin/reports?${new URLSearchParams({
+      ...(params.userId ? { userId: params.userId } : {}),
+      ...(params.itemId ? { itemId: params.itemId } : {}),
+      ...(params.type ? { type: params.type } : {}),
+      ...(params.from ? { from: params.from } : {}),
+      ...(params.to ? { to: params.to } : {}),
+      page: String(nextPage)
+    }).toString()}`;
 
   return (
     <AppShell user={admin}>
@@ -134,6 +205,7 @@ export default async function ReportsPage({
             <option value="">All types</option>
             <option value={TransactionType.GIVEN}>Given</option>
             <option value={TransactionType.RETURNED}>Returned</option>
+            <option value={TransactionType.MISSING}>Missing/Damaged</option>
           </select>
         </div>
         <div className="space-y-1.5">
@@ -154,6 +226,13 @@ export default async function ReportsPage({
           </Link>
         </div>
       </form>
+
+      <div className="mb-6 flex justify-end">
+        <Link className="btn-secondary" href={exportHref}>
+          <Download className="h-4 w-4" aria-hidden="true" />
+          Export CSV
+        </Link>
+      </div>
 
       <section className="grid gap-6 xl:grid-cols-2">
         <div className="panel overflow-hidden">
@@ -185,6 +264,42 @@ export default async function ReportsPage({
                 {holdings.length === 0 ? (
                   <tr>
                     <td className="table-cell text-center text-slate-500" colSpan={5}>No held items.</td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="panel overflow-hidden">
+          <div className="border-b border-atelier-line p-5">
+            <h2 className="text-lg font-semibold text-ink">Missing or Damaged Items</h2>
+            <p className="text-sm text-slate-500">Latest items users marked as missing, damaged, broken, or otherwise not returnable.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="responsive-table min-w-[760px] w-full">
+              <thead className="table-head">
+                <tr>
+                  <th className="px-4 py-3">User</th>
+                  <th className="px-4 py-3">Item</th>
+                  <th className="px-4 py-3">Qty</th>
+                  <th className="px-4 py-3">Notes</th>
+                  <th className="px-4 py-3">Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {missingTransactions.map((transaction) => (
+                  <tr key={transaction.id}>
+                    <td className="table-cell font-medium text-ink" data-label="User">{transaction.user.name}</td>
+                    <td className="table-cell" data-label="Item">{transaction.item.name}</td>
+                    <td className="table-cell" data-label="Qty">{transaction.quantity}</td>
+                    <td className="table-cell" data-label="Notes">{transaction.notes ?? "-"}</td>
+                    <td className="table-cell whitespace-nowrap" data-label="Date">{formatDate(transaction.createdAt)}</td>
+                  </tr>
+                ))}
+                {missingTransactions.length === 0 ? (
+                  <tr>
+                    <td className="table-cell text-center text-slate-500" colSpan={5}>No missing or damaged items for this filter.</td>
                   </tr>
                 ) : null}
               </tbody>
@@ -227,7 +342,7 @@ export default async function ReportsPage({
         <div className="panel overflow-hidden">
           <div className="border-b border-atelier-line p-5">
             <h2 className="text-lg font-semibold text-ink">Returned Items</h2>
-            <p className="text-sm text-slate-500">Returned transactions within the current filter.</p>
+            <p className="text-sm text-slate-500">Latest returned transactions within the current filter.</p>
           </div>
           <div className="overflow-x-auto">
             <table className="responsive-table min-w-[760px] w-full">
@@ -307,7 +422,7 @@ export default async function ReportsPage({
                 <th className="px-4 py-3">Qty</th>
                 <th className="px-4 py-3">Unit Price</th>
                 <th className="px-4 py-3">Total</th>
-                <th className="px-4 py-3">Admin</th>
+                <th className="px-4 py-3">Recorded By</th>
                 <th className="px-4 py-3">Date</th>
               </tr>
             </thead>
@@ -315,14 +430,24 @@ export default async function ReportsPage({
               {transactions.map((transaction) => (
                 <tr key={transaction.id}>
                   <td className="table-cell" data-label="Type">
-                    <Badge variant={transaction.type === TransactionType.GIVEN ? "teal" : "green"}>{transaction.type}</Badge>
+                    <Badge
+                      variant={
+                        transaction.type === TransactionType.GIVEN
+                          ? "teal"
+                          : transaction.type === TransactionType.RETURNED
+                            ? "green"
+                            : "red"
+                      }
+                    >
+                      {transaction.type}
+                    </Badge>
                   </td>
                   <td className="table-cell font-medium text-ink" data-label="User">{transaction.user.name}</td>
                   <td className="table-cell" data-label="Item">{transaction.item.name}</td>
                   <td className="table-cell" data-label="Qty">{transaction.quantity}</td>
                   <td className="table-cell" data-label="Unit Price">{formatCurrency(toNumber(transaction.unitPrice))}</td>
                   <td className="table-cell" data-label="Total">{formatCurrency(toNumber(transaction.totalPrice))}</td>
-                  <td className="table-cell" data-label="Admin">{transaction.createdByAdmin.name}</td>
+                  <td className="table-cell" data-label="Recorded By">{transaction.createdByAdmin.name}</td>
                   <td className="table-cell whitespace-nowrap" data-label="Date">{formatDate(transaction.createdAt)}</td>
                 </tr>
               ))}
@@ -333,6 +458,19 @@ export default async function ReportsPage({
               ) : null}
             </tbody>
           </table>
+        </div>
+        <div className="flex flex-col gap-3 border-t border-atelier-line p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-sm text-slate-500">
+            Page {page} of {totalPages} - {transactionCount} matching transactions
+          </div>
+          <div className="flex gap-2">
+            <Link className="btn-secondary" href={pageHref(Math.max(1, page - 1))} aria-disabled={page <= 1}>
+              Previous
+            </Link>
+            <Link className="btn-secondary" href={pageHref(Math.min(totalPages, page + 1))} aria-disabled={page >= totalPages}>
+              Next
+            </Link>
+          </div>
         </div>
       </section>
 

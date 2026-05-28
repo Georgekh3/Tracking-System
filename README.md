@@ -60,6 +60,12 @@ DIRECT_URL="postgresql://postgres.xzeueivjzkotlyvgcqei:YOUR_PASSWORD@aws-1-ap-no
 
 Do not run `npx prisma init`; Prisma is already configured in this project. After updating the URLs, run `npm run prisma:generate` and `npm run prisma:seed` to create the bootstrap admin.
 
+For an existing hosted database, apply checked-in migrations with:
+
+```bash
+npm run prisma:deploy
+```
+
 ## First Login
 
 Use the bootstrap admin credentials you set in `.env`. The seed script does not create sample users, sample items, or sample transactions.
@@ -72,6 +78,7 @@ npm run build
 npm run typecheck
 npm run prisma:generate
 npm run prisma:migrate
+npm run prisma:deploy
 npm run prisma:seed
 npm run db:studio
 ```

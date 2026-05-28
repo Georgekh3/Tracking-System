@@ -13,6 +13,7 @@ export type Holding = {
   itemUnitPrice: number;
   givenQuantity: number;
   returnedQuantity: number;
+  missingQuantity: number;
   remainingQuantity: number;
   currentValue: number;
 };
@@ -53,17 +54,21 @@ export async function getHoldings(filters: HoldingFilters = {}) {
       itemUnitPrice: toNumber(transaction.item.unitPrice),
       givenQuantity: 0,
       returnedQuantity: 0,
+      missingQuantity: 0,
       remainingQuantity: 0,
       currentValue: 0
     };
 
     if (transaction.type === TransactionType.GIVEN) {
       existing.givenQuantity += transaction.quantity;
-    } else {
+    } else if (transaction.type === TransactionType.RETURNED) {
       existing.returnedQuantity += transaction.quantity;
+    } else {
+      existing.missingQuantity += transaction.quantity;
     }
 
-    existing.remainingQuantity = existing.givenQuantity - existing.returnedQuantity;
+    existing.remainingQuantity =
+      existing.givenQuantity - existing.returnedQuantity - existing.missingQuantity;
     existing.currentValue = existing.remainingQuantity * existing.itemUnitPrice;
     holdings.set(key, existing);
   }

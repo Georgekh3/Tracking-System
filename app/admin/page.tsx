@@ -47,7 +47,7 @@ export default async function AdminDashboardPage() {
                   <ItemPhoto imagePath={item.imagePath} name={item.name} size="sm" />
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-medium text-ink">{item.name}</div>
-                    <div className="text-xs text-slate-500">{item.category} · {item.place}</div>
+                    <div className="text-xs text-slate-500">{item.category} - {item.place}</div>
                   </div>
                   <Badge variant={item.quantity === 0 ? "red" : "gold"}>{item.quantity} left</Badge>
                 </div>
@@ -59,7 +59,7 @@ export default async function AdminDashboardPage() {
         <div className="panel overflow-hidden">
           <div className="border-b border-atelier-line p-5">
             <h2 className="text-lg font-semibold text-ink">Recent Transactions</h2>
-            <p className="text-sm text-slate-500">Latest given and returned item activity.</p>
+            <p className="text-sm text-slate-500">Latest given, returned, and missing/damaged item activity.</p>
           </div>
 
           <div className="overflow-x-auto">
@@ -78,7 +78,17 @@ export default async function AdminDashboardPage() {
                 {dashboard.recentTransactions.map((transaction) => (
                   <tr key={transaction.id}>
                     <td className="table-cell" data-label="Type">
-                      <Badge variant={transaction.type === "GIVEN" ? "teal" : "green"}>{transaction.type}</Badge>
+                      <Badge
+                        variant={
+                          transaction.type === "GIVEN"
+                            ? "teal"
+                            : transaction.type === "RETURNED"
+                              ? "green"
+                              : "red"
+                        }
+                      >
+                        {transaction.type}
+                      </Badge>
                     </td>
                     <td className="table-cell font-medium text-ink" data-label="Item">{transaction.item.name}</td>
                     <td className="table-cell" data-label="User">{transaction.user.name}</td>

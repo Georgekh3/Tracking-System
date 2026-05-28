@@ -95,3 +95,26 @@ export async function deleteItemAction(formData: FormData) {
   revalidatePath("/admin");
   redirectWithMessage(ITEMS_PATH, "success", "Item archived.");
 }
+
+export async function restoreItemAction(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+
+  if (!id) {
+    redirectWithMessage("/admin/items/archived", "error", "Missing item id.");
+  }
+
+  try {
+    await prisma.item.update({
+      where: { id },
+      data: { isDeleted: false }
+    });
+  } catch (error) {
+    redirectWithMessage("/admin/items/archived", "error", errorMessage(error));
+  }
+
+  revalidatePath("/admin/items");
+  revalidatePath("/admin/items/archived");
+  revalidatePath("/admin");
+  redirectWithMessage("/admin/items/archived", "success", "Item restored.");
+}

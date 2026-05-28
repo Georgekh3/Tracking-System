@@ -16,6 +16,7 @@ enum Role {
 enum TransactionType {
   GIVEN
   RETURNED
+  MISSING
 }
 
 model User {
