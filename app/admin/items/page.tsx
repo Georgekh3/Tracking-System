@@ -56,7 +56,7 @@ export default async function AdminItemsPage({
               <label className="field-label" htmlFor="name">Name</label>
               <input className="field-input" id="name" name="name" required />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <label className="field-label" htmlFor="quantity">Quantity</label>
                 <input className="field-input" id="quantity" name="quantity" type="number" min="1" step="1" required />
@@ -66,7 +66,7 @@ export default async function AdminItemsPage({
                 <input className="field-input" id="unitPrice" name="unitPrice" type="number" min="0.01" step="0.01" required />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <label className="field-label" htmlFor="place">Place</label>
                 <input className="field-input" id="place" name="place" required />
@@ -102,7 +102,7 @@ export default async function AdminItemsPage({
 
           <div className="panel overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="min-w-[980px] w-full">
+              <table className="responsive-table min-w-[980px] w-full">
                 <thead className="table-head">
                   <tr>
                     <th className="px-4 py-3">Item</th>
@@ -119,7 +119,7 @@ export default async function AdminItemsPage({
                     const unitPrice = toNumber(item.unitPrice);
                     return (
                       <tr key={item.id} className="align-top">
-                        <td className="table-cell">
+                        <td className="table-cell mobile-full" data-label="Item">
                           <div className="flex items-start gap-3">
                             <ItemPhoto imagePath={item.imagePath} name={item.name} />
                             <div className="min-w-0">
@@ -129,25 +129,25 @@ export default async function AdminItemsPage({
                             </div>
                           </div>
                         </td>
-                        <td className="table-cell">{item.category}</td>
-                        <td className="table-cell">
+                        <td className="table-cell" data-label="Category">{item.category}</td>
+                        <td className="table-cell" data-label="Stock">
                           <Badge variant={item.quantity <= LOW_STOCK_THRESHOLD ? "gold" : "green"}>{item.quantity}</Badge>
                         </td>
-                        <td className="table-cell">{formatCurrency(unitPrice)}</td>
-                        <td className="table-cell">{formatCurrency(item.quantity * unitPrice)}</td>
-                        <td className="table-cell whitespace-nowrap">{formatShortDate(item.createdAt)}</td>
-                        <td className="table-cell">
+                        <td className="table-cell" data-label="Unit Price">{formatCurrency(unitPrice)}</td>
+                        <td className="table-cell" data-label="Total Value">{formatCurrency(item.quantity * unitPrice)}</td>
+                        <td className="table-cell whitespace-nowrap" data-label="Created">{formatShortDate(item.createdAt)}</td>
+                        <td className="table-cell mobile-full" data-label="Actions">
                           <div className="flex flex-col gap-2">
                             <details className="rounded-md border border-atelier-line bg-white p-2">
                               <summary className="cursor-pointer text-sm font-medium text-atelier-teal">Edit</summary>
                               <form action={updateItemAction} className="mt-3 grid gap-3">
                                 <input type="hidden" name="id" value={item.id} />
                                 <input className="field-input" name="name" defaultValue={item.name} required />
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid gap-2 sm:grid-cols-2">
                                   <input className="field-input" name="quantity" type="number" min="0" step="1" defaultValue={item.quantity} required />
                                   <input className="field-input" name="unitPrice" type="number" min="0.01" step="0.01" defaultValue={unitPrice} required />
                                 </div>
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid gap-2 sm:grid-cols-2">
                                   <input className="field-input" name="place" defaultValue={item.place} required />
                                   <input className="field-input" name="category" defaultValue={item.category} required />
                                 </div>

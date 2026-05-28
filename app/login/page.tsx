@@ -19,12 +19,6 @@ export default async function LoginPage() {
         <div className="panel p-6">
           <LoginForm />
         </div>
-
-        <div className="mt-5 rounded-lg border border-atelier-line bg-white p-4 text-sm text-slate-600">
-          <div className="font-medium text-ink">Demo credentials</div>
-          <div className="mt-1">Admin: admin1@atelier.local / Admin123!</div>
-          <div>User: user1@atelier.local / User123!</div>
-        </div>
       </section>
     </main>
   );

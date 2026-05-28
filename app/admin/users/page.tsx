@@ -2,6 +2,7 @@ import { Prisma, Role } from "@prisma/client";
 import { Save, Search, UserCog, UserPlus } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Badge } from "@/components/badge";
+import { PasswordInput } from "@/components/password-input";
 import { StatusMessage } from "@/components/status-message";
 import { createUserAction, toggleUserStatusAction, updateUserAction } from "@/lib/actions/users";
 import { requireAdmin } from "@/lib/auth";
@@ -67,7 +68,13 @@ export default async function AdminUsersPage({
             </div>
             <div className="space-y-1.5">
               <label className="field-label" htmlFor="password">Password</label>
-              <input className="field-input" id="password" name="password" type="password" minLength={8} required />
+              <PasswordInput
+                id="password"
+                name="password"
+                autoComplete="new-password"
+                minLength={8}
+                required
+              />
             </div>
             <div className="space-y-1.5">
               <label className="field-label" htmlFor="role">Role</label>
@@ -94,7 +101,7 @@ export default async function AdminUsersPage({
 
           <div className="panel overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="min-w-[860px] w-full">
+              <table className="responsive-table min-w-[860px] w-full">
                 <thead className="table-head">
                   <tr>
                     <th className="px-4 py-3">Name</th>
@@ -108,16 +115,16 @@ export default async function AdminUsersPage({
                 <tbody>
                   {users.map((user) => (
                     <tr key={user.id} className="align-top">
-                      <td className="table-cell font-medium text-ink">{user.name}</td>
-                      <td className="table-cell">{user.email}</td>
-                      <td className="table-cell">
+                      <td className="table-cell font-medium text-ink" data-label="Name">{user.name}</td>
+                      <td className="table-cell" data-label="Email">{user.email}</td>
+                      <td className="table-cell" data-label="Role">
                         <Badge variant={user.role === Role.ADMIN ? "teal" : "neutral"}>{user.role}</Badge>
                       </td>
-                      <td className="table-cell">
+                      <td className="table-cell" data-label="Status">
                         <Badge variant={user.isActive ? "green" : "red"}>{user.isActive ? "Active" : "Inactive"}</Badge>
                       </td>
-                      <td className="table-cell whitespace-nowrap">{formatShortDate(user.createdAt)}</td>
-                      <td className="table-cell">
+                      <td className="table-cell whitespace-nowrap" data-label="Created">{formatShortDate(user.createdAt)}</td>
+                      <td className="table-cell mobile-full" data-label="Actions">
                         <div className="flex flex-col gap-2">
                           <details className="rounded-md border border-atelier-line bg-white p-2">
                             <summary className="cursor-pointer text-sm font-medium text-atelier-teal">Edit</summary>
@@ -129,7 +136,12 @@ export default async function AdminUsersPage({
                                 <option value={Role.USER}>User</option>
                                 <option value={Role.ADMIN}>Admin</option>
                               </select>
-                              <input className="field-input" name="password" type="password" minLength={8} placeholder="New password, optional" />
+                              <PasswordInput
+                                name="password"
+                                autoComplete="new-password"
+                                minLength={8}
+                                placeholder="New password, optional"
+                              />
                               <button className="btn-primary" type="submit">
                                 <Save className="h-4 w-4" aria-hidden="true" />
                                 Save

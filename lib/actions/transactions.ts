@@ -2,20 +2,49 @@
 
 import { Prisma, Role, TransactionType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { giveItemSchema, returnItemSchema } from "@/lib/validation";
+import { giveItemsSchema, returnItemSchema } from "@/lib/validation";
 import { errorMessage, firstIssue, redirectWithMessage } from "@/lib/actions/helpers";
 
 const GIVE_PATH = "/admin/give";
-const RETURNS_PATH = "/admin/returns";
+const USER_DASHBOARD_PATH = "/dashboard";
 
 export async function giveItemAction(formData: FormData) {
   const admin = await requireAdmin();
 
-  const parsed = giveItemSchema.safeParse(Object.fromEntries(formData));
+  const parsed = giveItemsSchema.safeParse({
+    userId: formData.get("userId"),
+    notes: formData.get("notes")
+  });
+
   if (!parsed.success) {
     redirectWithMessage(GIVE_PATH, "error", firstIssue(parsed.error));
+  }
+
+  const selectedItemIds = Array.from(
+    new Set(
+      formData
+        .getAll("itemIds")
+        .map((value) => String(value))
+        .filter(Boolean)
+    )
+  );
+
+  if (selectedItemIds.length === 0) {
+    redirectWithMessage(GIVE_PATH, "error", "Select at least one item to give.");
+  }
+
+  const handoverItems: { itemId: string; quantity: number }[] = [];
+
+  for (const itemId of selectedItemIds) {
+    const quantity = Number(formData.get(`quantity:${itemId}`));
+
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      redirectWithMessage(GIVE_PATH, "error", "Enter a positive quantity for every selected item.");
+    }
+
+    handoverItems.push({ itemId, quantity });
   }
 
   try {
@@ -33,49 +62,58 @@ export async function giveItemAction(formData: FormData) {
         throw new Error("Select an active user.");
       }
 
-      const item = await tx.item.findFirst({
+      const items = await tx.item.findMany({
         where: {
-          id: parsed.data.itemId,
+          id: { in: handoverItems.map((item) => item.itemId) },
           isDeleted: false
         }
       });
 
-      if (!item) {
-        throw new Error("Item was not found.");
+      const itemsById = new Map(items.map((item) => [item.id, item]));
+
+      if (itemsById.size !== handoverItems.length) {
+        throw new Error("One or more selected items were not found.");
       }
 
-      const update = await tx.item.updateMany({
-        where: {
-          id: item.id,
-          quantity: {
-            gte: parsed.data.quantity
-          }
-        },
-        data: {
-          quantity: {
-            decrement: parsed.data.quantity
-          }
+      for (const handoverItem of handoverItems) {
+        const item = itemsById.get(handoverItem.itemId);
+        if (!item) {
+          throw new Error("One or more selected items were not found.");
         }
-      });
 
-      if (update.count !== 1) {
-        throw new Error("Not enough stock available for this handover.");
+        const update = await tx.item.updateMany({
+          where: {
+            id: item.id,
+            quantity: {
+              gte: handoverItem.quantity
+            }
+          },
+          data: {
+            quantity: {
+              decrement: handoverItem.quantity
+            }
+          }
+        });
+
+        if (update.count !== 1) {
+          throw new Error(`Not enough stock available for ${item.name}.`);
+        }
+
+        const unitPrice = new Prisma.Decimal(item.unitPrice);
+
+        await tx.transaction.create({
+          data: {
+            itemId: item.id,
+            userId: user.id,
+            type: TransactionType.GIVEN,
+            quantity: handoverItem.quantity,
+            unitPrice,
+            totalPrice: unitPrice.mul(handoverItem.quantity),
+            notes: parsed.data.notes || null,
+            createdByAdminId: admin.id
+          }
+        });
       }
-
-      const unitPrice = new Prisma.Decimal(item.unitPrice);
-
-      await tx.transaction.create({
-        data: {
-          itemId: item.id,
-          userId: user.id,
-          type: TransactionType.GIVEN,
-          quantity: parsed.data.quantity,
-          unitPrice,
-          totalPrice: unitPrice.mul(parsed.data.quantity),
-          notes: parsed.data.notes || null,
-          createdByAdminId: admin.id
-        }
-      });
     });
   } catch (error) {
     redirectWithMessage(GIVE_PATH, "error", errorMessage(error));
@@ -84,30 +122,34 @@ export async function giveItemAction(formData: FormData) {
   revalidatePath(GIVE_PATH);
   revalidatePath("/admin");
   revalidatePath("/admin/reports");
-  redirectWithMessage(GIVE_PATH, "success", "Items given and stock updated.");
+  redirectWithMessage(GIVE_PATH, "success", "Selected items given and stock updated.");
 }
 
 export async function returnItemAction(formData: FormData) {
-  const admin = await requireAdmin();
+  const user = await requireUser();
+
+  if (user.role !== Role.USER) {
+    redirectWithMessage("/admin", "error", "Only users can return their unused items.");
+  }
 
   const parsed = returnItemSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
-    redirectWithMessage(RETURNS_PATH, "error", firstIssue(parsed.error));
+    redirectWithMessage(USER_DASHBOARD_PATH, "error", firstIssue(parsed.error));
   }
 
   try {
     await prisma.$transaction(async (tx) => {
-      const [user, item, transactions] = await Promise.all([
-        tx.user.findUnique({
-          where: { id: parsed.data.userId },
-          select: { id: true }
-        }),
+      if (parsed.data.userId && parsed.data.userId !== user.id) {
+        throw new Error("You can only return items assigned to your account.");
+      }
+
+      const [item, transactions] = await Promise.all([
         tx.item.findUnique({
           where: { id: parsed.data.itemId }
         }),
         tx.transaction.findMany({
           where: {
-            userId: parsed.data.userId,
+            userId: user.id,
             itemId: parsed.data.itemId
           },
           select: {
@@ -116,10 +158,6 @@ export async function returnItemAction(formData: FormData) {
           }
         })
       ]);
-
-      if (!user) {
-        throw new Error("User was not found.");
-      }
 
       if (!item) {
         throw new Error("Item was not found.");
@@ -155,16 +193,16 @@ export async function returnItemAction(formData: FormData) {
           unitPrice,
           totalPrice: unitPrice.mul(parsed.data.quantity),
           notes: parsed.data.notes || null,
-          createdByAdminId: admin.id
+          createdByAdminId: user.id
         }
       });
     });
   } catch (error) {
-    redirectWithMessage(RETURNS_PATH, "error", errorMessage(error));
+    redirectWithMessage(USER_DASHBOARD_PATH, "error", errorMessage(error));
   }
 
-  revalidatePath(RETURNS_PATH);
+  revalidatePath(USER_DASHBOARD_PATH);
   revalidatePath("/admin");
   revalidatePath("/admin/reports");
-  redirectWithMessage(RETURNS_PATH, "success", "Returned items received and stock updated.");
+  redirectWithMessage(USER_DASHBOARD_PATH, "success", "Returned items sent back to Atelier stock.");
 }

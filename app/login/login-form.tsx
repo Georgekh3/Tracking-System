@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { LogIn } from "lucide-react";
+import { PasswordInput } from "@/components/password-input";
 import { loginAction, type LoginState } from "@/lib/actions/auth";
 
 const initialState: LoginState = {};
@@ -35,11 +36,9 @@ export function LoginForm() {
         <label className="field-label" htmlFor="password">
           Password
         </label>
-        <input
-          className="field-input"
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           autoComplete="current-password"
           required
         />

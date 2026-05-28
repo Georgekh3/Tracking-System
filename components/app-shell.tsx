@@ -6,7 +6,6 @@ import {
   HandCoins,
   LayoutDashboard,
   LogOut,
-  RotateCcw,
   Users
 } from "lucide-react";
 import type { AuthUser } from "@/lib/auth";
@@ -17,7 +16,6 @@ const adminLinks = [
   { href: "/admin/items", label: "Inventory", icon: Boxes },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/give", label: "Give Items", icon: HandCoins },
-  { href: "/admin/returns", label: "Returns", icon: RotateCcw },
   { href: "/admin/reports", label: "Reports", icon: ClipboardList }
 ];
 

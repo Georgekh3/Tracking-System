@@ -70,4 +70,52 @@ textarea {
   .table-cell {
     @apply border-b border-slate-100 px-4 py-3 text-sm text-slate-700;
   }
+
+  @media (max-width: 767px) {
+    .responsive-table {
+      min-width: 0 !important;
+    }
+
+    .responsive-table thead {
+      display: none;
+    }
+
+    .responsive-table,
+    .responsive-table tbody,
+    .responsive-table tr,
+    .responsive-table td {
+      display: block;
+      width: 100%;
+    }
+
+    .responsive-table tbody {
+      @apply divide-y divide-slate-100;
+    }
+
+    .responsive-table tr {
+      @apply p-4;
+    }
+
+    .responsive-table td {
+      @apply flex items-start justify-between gap-4 border-0 px-0 py-2 text-right;
+    }
+
+    .responsive-table td::before {
+      content: attr(data-label);
+      @apply max-w-[45%] shrink-0 text-left text-xs font-semibold uppercase text-slate-500;
+    }
+
+    .responsive-table td.mobile-full {
+      @apply block text-left;
+    }
+
+    .responsive-table td.mobile-full::before,
+    .responsive-table td[colspan]::before {
+      content: none;
+    }
+
+    .responsive-table td[colspan] {
+      @apply block text-center;
+    }
+  }
 }

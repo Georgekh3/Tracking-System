@@ -36,15 +36,13 @@ export const updateUserSchema = z.object({
   isActive: z.coerce.boolean().optional()
 });
 
-export const giveItemSchema = z.object({
+export const giveItemsSchema = z.object({
   userId: z.string().min(1, "Select a user."),
-  itemId: z.string().min(1, "Select an item."),
-  quantity: z.coerce.number().int().positive("Quantity must be positive."),
   notes: z.string().trim().optional()
 });
 
 export const returnItemSchema = z.object({
-  userId: z.string().min(1, "Select a user."),
+  userId: z.string().optional(),
   itemId: z.string().min(1, "Select an item."),
   quantity: z.coerce.number().int().positive("Quantity must be positive."),
   notes: z.string().trim().optional()

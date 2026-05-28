@@ -162,7 +162,7 @@ export default async function ReportsPage({
             <p className="text-sm text-slate-500">Net quantities currently held by each user.</p>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-[720px] w-full">
+            <table className="responsive-table min-w-[720px] w-full">
               <thead className="table-head">
                 <tr>
                   <th className="px-4 py-3">User</th>
@@ -175,11 +175,11 @@ export default async function ReportsPage({
               <tbody>
                 {holdings.map((holding) => (
                   <tr key={holding.key}>
-                    <td className="table-cell font-medium text-ink">{holding.userName}</td>
-                    <td className="table-cell">{holding.itemName}</td>
-                    <td className="table-cell">{holding.givenQuantity}</td>
-                    <td className="table-cell">{holding.remainingQuantity}</td>
-                    <td className="table-cell">{formatCurrency(holding.currentValue)}</td>
+                    <td className="table-cell font-medium text-ink" data-label="User">{holding.userName}</td>
+                    <td className="table-cell" data-label="Item">{holding.itemName}</td>
+                    <td className="table-cell" data-label="Received">{holding.givenQuantity}</td>
+                    <td className="table-cell" data-label="Remaining">{holding.remainingQuantity}</td>
+                    <td className="table-cell" data-label="Value">{formatCurrency(holding.currentValue)}</td>
                   </tr>
                 ))}
                 {holdings.length === 0 ? (
@@ -198,7 +198,7 @@ export default async function ReportsPage({
             <p className="text-sm text-slate-500">Current user-held value using current item unit prices.</p>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-[520px] w-full">
+            <table className="responsive-table min-w-[520px] w-full">
               <thead className="table-head">
                 <tr>
                   <th className="px-4 py-3">User</th>
@@ -209,9 +209,9 @@ export default async function ReportsPage({
               <tbody>
                 {totalsByUser.map((row) => (
                   <tr key={row.userId}>
-                    <td className="table-cell font-medium text-ink">{row.userName}</td>
-                    <td className="table-cell">{row.quantity}</td>
-                    <td className="table-cell">{formatCurrency(row.value)}</td>
+                    <td className="table-cell font-medium text-ink" data-label="User">{row.userName}</td>
+                    <td className="table-cell" data-label="Quantity">{row.quantity}</td>
+                    <td className="table-cell" data-label="Value">{formatCurrency(row.value)}</td>
                   </tr>
                 ))}
                 {totalsByUser.length === 0 ? (
@@ -230,7 +230,7 @@ export default async function ReportsPage({
             <p className="text-sm text-slate-500">Returned transactions within the current filter.</p>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-[760px] w-full">
+            <table className="responsive-table min-w-[760px] w-full">
               <thead className="table-head">
                 <tr>
                   <th className="px-4 py-3">User</th>
@@ -243,11 +243,11 @@ export default async function ReportsPage({
               <tbody>
                 {returnedTransactions.map((transaction) => (
                   <tr key={transaction.id}>
-                    <td className="table-cell font-medium text-ink">{transaction.user.name}</td>
-                    <td className="table-cell">{transaction.item.name}</td>
-                    <td className="table-cell">{transaction.quantity}</td>
-                    <td className="table-cell">{formatCurrency(toNumber(transaction.totalPrice))}</td>
-                    <td className="table-cell whitespace-nowrap">{formatDate(transaction.createdAt)}</td>
+                    <td className="table-cell font-medium text-ink" data-label="User">{transaction.user.name}</td>
+                    <td className="table-cell" data-label="Item">{transaction.item.name}</td>
+                    <td className="table-cell" data-label="Qty">{transaction.quantity}</td>
+                    <td className="table-cell" data-label="Value">{formatCurrency(toNumber(transaction.totalPrice))}</td>
+                    <td className="table-cell whitespace-nowrap" data-label="Date">{formatDate(transaction.createdAt)}</td>
                   </tr>
                 ))}
                 {returnedTransactions.length === 0 ? (
@@ -266,7 +266,7 @@ export default async function ReportsPage({
             <p className="text-sm text-slate-500">Low-stock items are marked at quantity {LOW_STOCK_THRESHOLD} or below.</p>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-[700px] w-full">
+            <table className="responsive-table min-w-[700px] w-full">
               <thead className="table-head">
                 <tr>
                   <th className="px-4 py-3">Item</th>
@@ -278,12 +278,12 @@ export default async function ReportsPage({
               <tbody>
                 {stockItems.map((item) => (
                   <tr key={item.id}>
-                    <td className="table-cell font-medium text-ink">{item.name}</td>
-                    <td className="table-cell">{item.category}</td>
-                    <td className="table-cell">
+                    <td className="table-cell font-medium text-ink" data-label="Item">{item.name}</td>
+                    <td className="table-cell" data-label="Category">{item.category}</td>
+                    <td className="table-cell" data-label="Stock">
                       <Badge variant={item.quantity <= LOW_STOCK_THRESHOLD ? "gold" : "green"}>{item.quantity}</Badge>
                     </td>
-                    <td className="table-cell">{formatCurrency(item.quantity * toNumber(item.unitPrice))}</td>
+                    <td className="table-cell" data-label="Value">{formatCurrency(item.quantity * toNumber(item.unitPrice))}</td>
                   </tr>
                 ))}
               </tbody>
@@ -298,7 +298,7 @@ export default async function ReportsPage({
           <p className="text-sm text-slate-500">All matching handovers and returns.</p>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-[980px] w-full">
+          <table className="responsive-table min-w-[980px] w-full">
             <thead className="table-head">
               <tr>
                 <th className="px-4 py-3">Type</th>
@@ -314,16 +314,16 @@ export default async function ReportsPage({
             <tbody>
               {transactions.map((transaction) => (
                 <tr key={transaction.id}>
-                  <td className="table-cell">
+                  <td className="table-cell" data-label="Type">
                     <Badge variant={transaction.type === TransactionType.GIVEN ? "teal" : "green"}>{transaction.type}</Badge>
                   </td>
-                  <td className="table-cell font-medium text-ink">{transaction.user.name}</td>
-                  <td className="table-cell">{transaction.item.name}</td>
-                  <td className="table-cell">{transaction.quantity}</td>
-                  <td className="table-cell">{formatCurrency(toNumber(transaction.unitPrice))}</td>
-                  <td className="table-cell">{formatCurrency(toNumber(transaction.totalPrice))}</td>
-                  <td className="table-cell">{transaction.createdByAdmin.name}</td>
-                  <td className="table-cell whitespace-nowrap">{formatDate(transaction.createdAt)}</td>
+                  <td className="table-cell font-medium text-ink" data-label="User">{transaction.user.name}</td>
+                  <td className="table-cell" data-label="Item">{transaction.item.name}</td>
+                  <td className="table-cell" data-label="Qty">{transaction.quantity}</td>
+                  <td className="table-cell" data-label="Unit Price">{formatCurrency(toNumber(transaction.unitPrice))}</td>
+                  <td className="table-cell" data-label="Total">{formatCurrency(toNumber(transaction.totalPrice))}</td>
+                  <td className="table-cell" data-label="Admin">{transaction.createdByAdmin.name}</td>
+                  <td className="table-cell whitespace-nowrap" data-label="Date">{formatDate(transaction.createdAt)}</td>
                 </tr>
               ))}
               {transactions.length === 0 ? (

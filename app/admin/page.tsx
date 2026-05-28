@@ -63,7 +63,7 @@ export default async function AdminDashboardPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-full">
+            <table className="responsive-table min-w-full">
               <thead className="table-head">
                 <tr>
                   <th className="px-4 py-3">Type</th>
@@ -77,14 +77,14 @@ export default async function AdminDashboardPage() {
               <tbody>
                 {dashboard.recentTransactions.map((transaction) => (
                   <tr key={transaction.id}>
-                    <td className="table-cell">
+                    <td className="table-cell" data-label="Type">
                       <Badge variant={transaction.type === "GIVEN" ? "teal" : "green"}>{transaction.type}</Badge>
                     </td>
-                    <td className="table-cell font-medium text-ink">{transaction.item.name}</td>
-                    <td className="table-cell">{transaction.user.name}</td>
-                    <td className="table-cell">{transaction.quantity}</td>
-                    <td className="table-cell">{formatCurrency(toNumber(transaction.totalPrice))}</td>
-                    <td className="table-cell whitespace-nowrap">{formatDate(transaction.createdAt)}</td>
+                    <td className="table-cell font-medium text-ink" data-label="Item">{transaction.item.name}</td>
+                    <td className="table-cell" data-label="User">{transaction.user.name}</td>
+                    <td className="table-cell" data-label="Qty">{transaction.quantity}</td>
+                    <td className="table-cell" data-label="Value">{formatCurrency(toNumber(transaction.totalPrice))}</td>
+                    <td className="table-cell whitespace-nowrap" data-label="Date">{formatDate(transaction.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>
